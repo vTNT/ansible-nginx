@@ -1,0 +1,39 @@
+---
+- name : install package before install nginx
+  apt: name={{ item }} state=installed update_cache=yes
+  with_items:
+    - python-pip
+    - libjpeg-dev
+    - libfreetype6-dev
+    - zlib1g-dev
+    - libpng12-dev
+
+- name: Ensure APT official nginx key
+  apt_key: url=http://nginx.org/keys/nginx_signing.key
+  tags: [packages,nginx]
+  when: ansible_os_family == 'Debian'
+
+- name: Ensure APT official nginx repository
+  apt_repository: repo="deb http://nginx.org/packages/{{ ansible_distribution|lower }}/ {{ ansible_distribution_release }} nginx"
+  tags: [packages,nginx]
+  when: ansible_os_family == 'Debian'
+
+- name: Install the nginx packages
+  apt: name={{ item }} state=present
+  with_items: 
+   - nginx
+  when: ansible_os_family == "Debian"
+  tags: [packages,nginx]
+
+- name: Ensure log directory exist
+  file: path=/etc/nginx/sites-enabled state=directory mode=0644
+  tags: [configuration,nginx]
+
+- name: Copy the nginx configuration file
+  template: src=nginx.conf.j2 dest=/etc/nginx/nginx.conf
+  notify:
+   - reload nginx
+  tags: [configuration,nginx]
+
+- name: start nginx
+  service: name=nginx state=started
